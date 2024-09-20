@@ -1,0 +1,74 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: An AWS Serverless Application Model template for a PDF Control Discovery function.
+
+Resources:
+  PdfControlDiscoveryFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: .
+      Handler: pdf_control_discovery.lambda_handler
+      Runtime: python3.12
+      MemorySize: 128
+      Timeout: 3
+      Events:
+        ApiEvent:
+          Type: Api
+          Properties:
+            Path: /PdfControlDiscovery
+            Method: GET
+            Auth:
+               ApiKeyRequired: true
+      Policies:
+        - AWSLambdaBasicExecutionRole
+        - Statement:
+            - Effect: Allow
+              Action:
+                - s3:GetObject
+                - s3:ListBucket
+              Resource:
+                - 'arn:aws:s3:::aws-sam-cli-managed-default-samclisourcebucket-kdvjqzoec6pg'
+                - 'arn:aws:s3:::aws-sam-cli-managed-default-samclisourcebucket-kdvjqzoec6pg/*'
+            - Effect: Allow
+              Action:
+                - logs:CreateLogGroup
+                - logs:CreateLogStream
+                - logs:PutLogEvents
+              Resource: "*"
+
+  PdfControlDiscoveryApiKey:
+    Type: AWS::ApiGateway::ApiKey
+    Properties:
+      Enabled: true
+      Name: PdfControlDiscoveryApiKey
+
+  PdfControlDiscoveryUsagePlan:
+    Type: AWS::ApiGateway::UsagePlan
+    Properties:
+      ApiStages:
+        - ApiId: !Ref ServerlessRestApi
+          Stage: Prod
+      UsagePlanName: PdfControlDiscoveryUsagePlan
+      Description: Usage plan for the PDF function
+      Throttle:
+        RateLimit: 10
+        BurstLimit: 2
+    DependsOn: PdfControlDiscoveryFunction
+
+  PdfControlDiscoveryUsagePlanKey:
+    Type: AWS::ApiGateway::UsagePlanKey
+    Properties:
+      KeyId: !Ref PdfControlDiscoveryApiKey
+      KeyType: API_KEY
+      UsagePlanId: !Ref PdfControlDiscoveryUsagePlan
+    DependsOn:
+      - PdfControlDiscoveryUsagePlan
+      - PdfControlDiscoveryApiKey
+
+Outputs:
+  ApiUrl:
+    Description: "API Gateway endpoint URL"
+    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/"
+  PdfControlDiscoveryApiKey:
+    Description: "API Key for accessing the PDF Control Discovery API"
+    Value: !Ref PdfControlDiscoveryApiKey
