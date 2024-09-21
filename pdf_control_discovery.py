@@ -1,8 +1,24 @@
 import json
 import boto3
-from pdf_fields_discovery import discover_pdf_fields
+from pypdf import PdfReader
 
 s3 = boto3.client('s3')
+
+def discover_pdf_fields(pdf_path):
+    """Discover form fields in a given PDF."""
+    pdf_reader = PdfReader(pdf_path)
+    fields = {}
+
+    for page in pdf_reader.pages:
+        if '/Annots' in page:
+            for annotation in page['/Annots']:
+                field = annotation.get_object()
+                field_name = field.get('/T')
+                if field_name:
+                    field_name = field_name.strip('()')
+                    fields[field_name] = ""
+
+    return fields
 
 def lambda_handler(event, context):
     try:

@@ -1,9 +1,15 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
-Description: An AWS Serverless Application Model template for a PDF Control Discovery function.
+Description: An AWS Serverless Application Model template for a PDF field discovery function.
 
 Resources:
-  PdfControlDiscoveryFunction:
+  PdfControlDiscoveryApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      Name: PdfControlDiscoveryApi  # Renaming the API to be more descriptive
+      StageName: Prod
+
+  pdfControlDiscoveryFunction:
     Type: AWS::Serverless::Function
     Properties:
       CodeUri: .
@@ -12,48 +18,45 @@ Resources:
       MemorySize: 128
       Timeout: 3
       Events:
-        ApiEvent:
+        Api1:
           Type: Api
           Properties:
-            Path: /PdfControlDiscovery
+            RestApiId: !Ref PdfControlDiscoveryApi  # Reference the renamed API
+            Path: /pdf-control-discovery
             Method: GET
             Auth:
-               ApiKeyRequired: true
+              ApiKeyRequired: true
       Policies:
         - AWSLambdaBasicExecutionRole
         - Statement:
-            - Effect: Allow
-              Action:
-                - s3:GetObject
-                - s3:ListBucket
-              Resource:
-                - 'arn:aws:s3:::aws-sam-cli-managed-default-samclisourcebucket-kdvjqzoec6pg'
-                - 'arn:aws:s3:::aws-sam-cli-managed-default-samclisourcebucket-kdvjqzoec6pg/*'
-            - Effect: Allow
-              Action:
-                - logs:CreateLogGroup
-                - logs:CreateLogStream
-                - logs:PutLogEvents
-              Resource: "*"
-
-  PdfControlDiscoveryApiKey:
-    Type: AWS::ApiGateway::ApiKey
-    Properties:
-      Enabled: true
-      Name: PdfControlDiscoveryApiKey
+            Effect: Allow
+            Action:
+              - s3:GetObject
+              - s3:HeadObject
+            Resource: arn:aws:s3:::aws-sam-cli-managed-default-samclisourcebucket-kdvjqzoec6pg/*  # Make sure to replace with your actual bucket name
 
   PdfControlDiscoveryUsagePlan:
     Type: AWS::ApiGateway::UsagePlan
+    DependsOn: PdfControlDiscoveryApiProdStage  # Ensure this is created first
     Properties:
       ApiStages:
-        - ApiId: !Ref ServerlessRestApi
-          Stage: Prod
+        - ApiId: !Ref PdfControlDiscoveryApi  # Reference the renamed API
+          Stage: Prod  # Ensure this stage exists
       UsagePlanName: PdfControlDiscoveryUsagePlan
-      Description: Usage plan for the PDF function
+      Description: Usage plan for the PDF control discovery function
       Throttle:
         RateLimit: 10
         BurstLimit: 2
-    DependsOn: PdfControlDiscoveryFunction
+
+  PdfControlDiscoveryApiKey:
+    Type: AWS::ApiGateway::ApiKey
+    DependsOn: PdfControlDiscoveryApiProdStage  # Ensure this is created first
+    Properties:
+      Enabled: true
+      Name: PdfControlDiscoveryApiKey
+      StageKeys:
+        - RestApiId: !Ref PdfControlDiscoveryApi  # Reference the renamed API
+          StageName: Prod  # Ensure this stage exists
 
   PdfControlDiscoveryUsagePlanKey:
     Type: AWS::ApiGateway::UsagePlanKey
@@ -61,14 +64,8 @@ Resources:
       KeyId: !Ref PdfControlDiscoveryApiKey
       KeyType: API_KEY
       UsagePlanId: !Ref PdfControlDiscoveryUsagePlan
-    DependsOn:
-      - PdfControlDiscoveryUsagePlan
-      - PdfControlDiscoveryApiKey
 
 Outputs:
   ApiUrl:
     Description: "API Gateway endpoint URL"
-    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/"
-  PdfControlDiscoveryApiKey:
-    Description: "API Key for accessing the PDF Control Discovery API"
-    Value: !Ref PdfControlDiscoveryApiKey
+    Value: !Sub "https://${PdfControlDiscoveryApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/"
