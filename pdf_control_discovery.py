@@ -1,24 +1,11 @@
+# pdf_control_discovery.py
 import json
-import boto3
-from pypdf import PdfReader
+import logging
+from pdf_field_service import discover_pdf_fields, download_pdf_from_s3  # Import functions from the new module
 
-s3 = boto3.client('s3')
-
-def discover_pdf_fields(pdf_path):
-    """Discover form fields in a given PDF."""
-    pdf_reader = PdfReader(pdf_path)
-    fields = {}
-
-    for page in pdf_reader.pages:
-        if '/Annots' in page:
-            for annotation in page['/Annots']:
-                field = annotation.get_object()
-                field_name = field.get('/T')
-                if field_name:
-                    field_name = field_name.strip('()')
-                    fields[field_name] = ""
-
-    return fields
+# Set up logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger()
 
 def lambda_handler(event, context):
     try:
@@ -38,8 +25,8 @@ def lambda_handler(event, context):
         # Paths in Lambda's tmp directory
         pdf_template_path = f'/tmp/{template_name}'
 
-        # Download the template PDF from S3
-        s3.download_file(bucket_name, pdf_template_s3_key, pdf_template_path)
+        # Download the template PDF from S3 using the new service function
+        download_pdf_from_s3(bucket_name, pdf_template_s3_key, pdf_template_path)
 
         # Discover form fields from the template
         discovered_fields = discover_pdf_fields(pdf_template_path)
@@ -52,6 +39,7 @@ def lambda_handler(event, context):
         }
 
     except Exception as e:
+        logger.error(f"Error processing the PDF discovery: {str(e)}", exc_info=True)
         return {
             'statusCode': 500,
             'body': json.dumps({'message': 'Internal server error', 'error': str(e)}),
