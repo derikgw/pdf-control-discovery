@@ -1,10 +1,15 @@
-# pdf_control_discovery.py
 import json
 import logging
-from pdf_field_service import discover_pdf_fields, download_pdf_from_s3  # Import functions from the new module
+from pdf_field_service import discover_pdf_fields, download_pdf  # Import functions from the service module
 
 # Set up logging
-logging.basicConfig(level=logging.INFO)
+if logging.getLogger().hasHandlers():
+    # The Lambda environment pre-configures a handler logging to stderr. If a handler is already configured,
+    # `.basicConfig` does not execute. Thus we set the level directly.
+    logging.getLogger().setLevel(logging.INFO)
+else:
+    logging.basicConfig(level=logging.INFO)
+
 logger = logging.getLogger()
 
 def lambda_handler(event, context):
@@ -18,15 +23,21 @@ def lambda_handler(event, context):
                 'headers': {'Content-Type': 'application/json'}
             }
 
+        # Log the extracted template name for debugging
+        logger.info(f"Received template name: {template_name}")
+
         # Define S3 bucket and template path
-        bucket_name = 'aws-sam-cli-managed-default-samclisourcebucket-kdvjqzoec6pg'
+        bucket_name = 's3://aws-sam-cli-managed-default-samclisourcebucket-kdvjqzoec6pg'
         pdf_template_s3_key = f'pdf_templates/{template_name}'
+
+        # Log the generated S3 key for debugging
+        logger.info(f"Generated S3 key: {pdf_template_s3_key}")
 
         # Paths in Lambda's tmp directory
         pdf_template_path = f'/tmp/{template_name}'
 
         # Download the template PDF from S3 using the new service function
-        download_pdf_from_s3(bucket_name, pdf_template_s3_key, pdf_template_path)
+        download_pdf(bucket_name, pdf_template_s3_key, pdf_template_path)
 
         # Discover form fields from the template
         discovered_fields = discover_pdf_fields(pdf_template_path)

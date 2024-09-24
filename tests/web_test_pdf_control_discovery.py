@@ -5,7 +5,6 @@ import json
 # Replace with your actual API Gateway URL
 api_url = "https://bhqsyirakl.execute-api.us-east-1.amazonaws.com/Prod/pdf-control-discovery"
 
-
 def test_discover_pdf_fields(template_name):
     """Test the API by sending a request to discover form fields in the PDF."""
 
@@ -20,16 +19,28 @@ def test_discover_pdf_fields(template_name):
 
     # Set the headers, including the API key
     headers = {
-        'x-api-key': api_key  # This is where API Gateway expects the API key
+        'x-api-key': api_key,
+        'Accept': 'application/json'
     }
+
+    # Log the request details for easier debugging
+    print(f"Sending request to {api_url} with params: {params} and headers: {headers}")
 
     try:
         # Send the GET request to the API
         response = requests.get(api_url, params=params, headers=headers)
 
+        # Log the response status code and content for debugging
+        print(f"Received response with status code: {response.status_code}")
+        print(f"Response content: {response.text}")
+
         # Check if the request was successful (status code 200)
         if response.status_code == 200:
-            print(f"Success! Response data: {json.dumps(response.json(), indent=4)}")
+            try:
+                # Parse and pretty-print the JSON response
+                print(f"Success! Response data: {json.dumps(response.json(), indent=4)}")
+            except json.JSONDecodeError:
+                print(f"Failed to decode JSON response. Raw response: {response.text}")
         elif response.status_code == 400:
             print(f"Client error: {response.status_code}. Message: {response.json().get('message')}")
         elif response.status_code == 403:
